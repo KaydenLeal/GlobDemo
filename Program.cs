@@ -21,22 +21,16 @@ internal static class Program
         };
         rootCommand.Arguments.Add(valueArgument);
 
+        // Define main program functionality to execute on argument parsing success.
         rootCommand.SetAction(parseResult =>
         {
-            string pattern = parseResult.GetRequiredValue(patternArgument);
+            GlobPattern pattern = GlobParser.ParsePattern(parseResult.GetRequiredValue(patternArgument));
             string value = parseResult.GetRequiredValue(valueArgument);
 
-            Run(pattern, value);
+            Console.WriteLine(GlobMatcher.GlobMatchString(pattern, value));
         });
 
+        // Parse the command line arguments.
         rootCommand.Parse(args).Invoke();
-    }
-
-    private static void Run(string patternString, string value)
-    {
-        GlobPattern pattern = GlobParser.ParsePattern(patternString);
-        bool valueMatches = GlobMatcher.GlobMatchString(pattern, value);
-
-        Console.WriteLine(valueMatches);
     }
 }

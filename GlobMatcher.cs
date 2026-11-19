@@ -31,7 +31,7 @@ public class GlobMatcher(GlobPattern pattern, string value)
     public static bool GlobMatchString(GlobPattern pattern, string value)
     {
         var matcher = new GlobMatcher(pattern, value);
-        return matcher.MatchFrom(0, 0);
+        return matcher.PatternMatchesFrom(0, 0);
     }
 
     /// <summary>
@@ -49,7 +49,7 @@ public class GlobMatcher(GlobPattern pattern, string value)
     ///     starting from the character index <paramref name="charPos" /> and token index
     ///     <paramref name="tokenPos" />, otherwise <see langword="false" />.
     /// </returns>
-    private bool MatchFrom(int charPos, int tokenPos)
+    private bool PatternMatchesFrom(int charPos, int tokenPos)
     {
         // Return the memorized return value for this call if it exists.
         if (_memo.TryGetValue((charPos, tokenPos), out bool memoResult)) return memoResult;
@@ -93,17 +93,17 @@ public class GlobMatcher(GlobPattern pattern, string value)
     /// </returns>
     private bool AnySequenceMatchesFrom(int charPos, int tokenPos)
     {
-        // AnySequence tokens can be matched from two timelines:
-        // A: Match the sequence by stopping the sequence at this character.
-        // B: Match the sequence by continuing the sequence for another character.
+        // AnySequence tokens can be successfully matched with two timelines:
+        // A: The sequence stops at this character, match the current character with the next token instead.
+        // B: The sequence continues with this character, match the next character with this same token.
         // If any of the two timelines produce a total match, this sequence token matches.
 
         // Attempt timeline A.
-        if (MatchFrom(charPos, tokenPos + 1))
+        if (PatternMatchesFrom(charPos, tokenPos + 1))
             return true;
         // A failed, attempt timeline B.
         if (charPos < _value.Length)
-            return MatchFrom(charPos + 1, tokenPos);
+            return PatternMatchesFrom(charPos + 1, tokenPos);
         // Timeline A failed, and Timeline B is not possible; there are no more characters to match.
         return false;
     }
@@ -148,7 +148,7 @@ public class GlobMatcher(GlobPattern pattern, string value)
             // The total match depends on this character being a match
             currentCharMatches &&
             // And on the rest of the characters also matching the pattern.
-            MatchFrom(charPos + 1, tokenPos + 1);
+            PatternMatchesFrom(charPos + 1, tokenPos + 1);
     }
 
     /// <summary>
