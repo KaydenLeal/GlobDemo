@@ -39,7 +39,7 @@ internal static class Program
             }
             catch (Exception e)
             {
-                Console.Error.WriteLine($"FALSE (UNKNOWN ERROR: {e.Message})");
+                Console.Error.WriteLine($"FALSE (ERROR: An unknown error occurred: {e.Message})");
             }
         });
 
