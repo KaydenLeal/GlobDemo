@@ -11,7 +11,7 @@ public class GlobParserException(Exception innerException)
 }
 
 /// <summary>
-///     Exception thrown during glob parsing when the parser attempts to read pass the end of its input.
+///     Exception thrown during glob parsing when the parser attempts to read past the end of its input.
 /// </summary>
 [Serializable]
 public class EndOfInputException() : Exception("Attempted to read a character past the pattern string's end");

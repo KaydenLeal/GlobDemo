@@ -35,9 +35,8 @@ internal static class Program
     private static void Run(string patternString, string value)
     {
         GlobPattern pattern = GlobParser.ParsePattern(patternString);
-        Console.WriteLine(pattern.Tokens.Count);
+        bool valueMatches = GlobMatcher.GlobMatchString(pattern, value);
 
-        Console.WriteLine(patternString);
-        Console.WriteLine(value);
+        Console.WriteLine(valueMatches);
     }
 }
