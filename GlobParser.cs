@@ -40,25 +40,37 @@ public class GlobParser(string patternString)
     /// </summary>
     /// <param name="patternString">String to parse as a <see cref="GlobPattern" />.</param>
     /// <returns>The parsed <see cref="GlobPattern" />.</returns>
-    /// <exception cref="Exception">A parsing error occurred.</exception>
+    /// <exception cref="GlobParserException">A parsing error occurred.</exception>
     public static GlobPattern ParsePattern(string patternString)
     {
         var parser = new GlobParser(patternString);
 
-        while (!parser.PatternStringExhausted())
+        try
         {
-            // Hand the parsing of this character to the proper state handler
-            switch (parser._state)
+            while (!parser.PatternStringExhausted())
             {
-                case GlobParserState.Root:
-                    parser.ParseOneRoot();
-                    break;
-                case GlobParserState.Set:
-                    parser.ParseOneSet();
-                    break;
-            }
+                // Hand the parsing of this character to the proper state handler
+                switch (parser._state)
+                {
+                    case GlobParserState.Root:
+                        parser.ParseOneRoot();
+                        break;
+                    case GlobParserState.Set:
+                        parser.ParseOneSet();
+                        break;
+                }
 
-            parser._charPos++;
+                parser._charPos++;
+            }
+        }
+        catch (Exception e) when (
+            e is EndOfInputException
+                or DanglingEscapeException
+                or DanglingRangeException
+                or EmptyCharacterSetException
+        )
+        {
+            throw new GlobParserException(e);
         }
 
         return new GlobPattern(parser._tokens);
@@ -68,7 +80,7 @@ public class GlobParser(string patternString)
     ///     Parses the current character in <see cref="_patternString" />
     ///     assuming the current state is <see cref="GlobParserState.Root" />.
     /// </summary>
-    /// <exception cref="Exception">A parsing error occurred.</exception>
+    /// <exception cref="DanglingEscapeException">The current character is a dangling escape character.</exception>
     private void ParseOneRoot()
     {
         switch (CurrentChar())
@@ -77,7 +89,7 @@ public class GlobParser(string patternString)
             {
                 _charPos++;
                 if (_charPos >= _patternString.Length)
-                    throw new Exception("Escape character is not followed by a character");
+                    throw new DanglingEscapeException();
                 char next = CurrentChar();
 
                 _tokens.Add(new GlobTokenLiteral(next));
@@ -121,7 +133,6 @@ public class GlobParser(string patternString)
     ///     assuming the current state is <see cref="GlobParserState.Set" />.
     /// </summary>
     /// <exception cref="DanglingEscapeException">The current character is a dangling escape character.</exception>
-    /// <exception cref="Exception">A parsing error occurred.</exception>
     private void ParseOneSet()
     {
         switch (CurrentChar())
