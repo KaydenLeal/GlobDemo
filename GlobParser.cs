@@ -3,8 +3,18 @@ namespace GlobDemo;
 /// <summary>
 ///     Parses strings into valid <see cref="GlobPattern" />s.
 /// </summary>
-public class GlobParser
+public class GlobParser(string patternString)
 {
+    /// <summary>
+    ///     The string currently being parsed.
+    /// </summary>
+    private readonly string _patternString = patternString;
+
+    /// <summary>
+    ///     The position of the character being parsed in <see cref="_patternString" />.
+    /// </summary>
+    private int _charPos;
+
     /// <summary>
     ///     Parsed token accumulator for <see cref="GlobParserState.Root" />.
     /// </summary>
@@ -30,47 +40,45 @@ public class GlobParser
     /// </summary>
     /// <param name="patternString">String to parse as a <see cref="GlobPattern" />.</param>
     /// <returns>The parsed <see cref="GlobPattern" />.</returns>
-    /// <exception cref="Exception">A parsing error occured.</exception>
+    /// <exception cref="Exception">A parsing error occurred.</exception>
     public static GlobPattern ParsePattern(string patternString)
     {
-        var parser = new GlobParser();
-        var charPos = 0;
+        var parser = new GlobParser(patternString);
 
-        while (charPos < patternString.Length)
+        while (!parser.PatternStringExhausted())
         {
             // Hand the parsing of this character to the proper state handler
             switch (parser._state)
             {
                 case GlobParserState.Root:
-                    parser.ParseOneRoot(patternString, ref charPos);
+                    parser.ParseOneRoot();
                     break;
                 case GlobParserState.Set:
-                    parser.ParseOneSet(patternString, ref charPos);
+                    parser.ParseOneSet();
                     break;
             }
 
-            charPos += 1;
+            parser._charPos++;
         }
 
         return new GlobPattern(parser._tokens);
     }
 
     /// <summary>
-    ///     Parses the current character in <paramref name="patternString" />
+    ///     Parses the current character in <see cref="_patternString" />
     ///     assuming the current state is <see cref="GlobParserState.Root" />.
     /// </summary>
-    /// <param name="patternString">The full string being parsed.</param>
-    /// <param name="charPos">Current character to parse.</param>
-    /// <exception cref="Exception">A parsing error occured.</exception>
-    private void ParseOneRoot(string patternString, ref int charPos)
+    /// <exception cref="Exception">A parsing error occurred.</exception>
+    private void ParseOneRoot()
     {
-        char ch = patternString[charPos];
+        char ch = _patternString[_charPos];
 
         if (ch == '\\')
         {
-            charPos += 1;
-            if (charPos >= patternString.Length) throw new Exception("Escape character is not followed by a character");
-            char next = patternString[charPos];
+            _charPos++;
+            if (_charPos >= _patternString.Length)
+                throw new Exception("Escape character is not followed by a character");
+            char next = _patternString[_charPos];
 
             _tokens.Add(new GlobTokenLiteral(next));
             return;
@@ -95,10 +103,10 @@ public class GlobParser
             _setNegated = false;
 
             // Peek at the next char to see if it negates this set
-            if (charPos + 1 < patternString.Length && patternString[charPos + 1] == '!')
+            if (PeekChar() == '!')
             {
                 _setNegated = true;
-                charPos += 1;
+                _charPos++;
             }
 
             return;
@@ -108,93 +116,125 @@ public class GlobParser
     }
 
     /// <summary>
-    ///     Parses the current character in <paramref name="patternString" />
+    ///     Parses the current character in <see cref="_patternString" />
     ///     assuming the current state is <see cref="GlobParserState.Set" />.
     /// </summary>
-    /// <param name="patternString">The full string being parsed.</param>
-    /// <param name="charPos">Current character to parse.</param>
-    /// <exception cref="Exception">A parsing error occured.</exception>
-    private void ParseOneSet(string patternString, ref int charPos)
+    /// <exception cref="DanglingEscapeException">The current character is a dangling escape character.</exception>
+    /// <exception cref="Exception">A parsing error occurred.</exception>
+    private void ParseOneSet()
     {
-        char ch = patternString[charPos];
-
-        if (ch == '\\')
+        switch (_patternString[_charPos])
         {
-            charPos += 1;
-            if (charPos >= patternString.Length) throw new Exception("Escape character is not followed by a character");
-            char next = patternString[charPos];
-
-            _tokens.Add(new GlobTokenLiteral(next));
-            return;
-        }
-
-        if (ch == ']')
-        {
-            FinishSet();
-            return;
-        }
-
-        // Peek at the next char to see if we need to parse a range
-        if (charPos + 1 < patternString.Length && patternString[charPos + 1] == '-')
-        {
-            charPos += 1;
-            (char rangeEnd, bool escaped) = NextRangeChar(patternString, ref charPos);
-
-            // If we get a non-escaped set closure,
-            // we can assume the current char and the range char '-' are literals.
-            // [a-] = Literal('a'), Literal('-')
-            if (rangeEnd == ']' && !escaped)
+            // 1. Escaped literal
+            case '\\':
             {
-                _setTokens.Add(new GlobTokenLiteral(ch));
-                _setTokens.Add(new GlobTokenLiteral('-'));
-                FinishSet();
+                _charPos++;
+                if (_charPos >= _patternString.Length) throw new DanglingEscapeException();
+                char next = _patternString[_charPos];
+
+                _tokens.Add(new GlobTokenLiteral(next));
                 return;
             }
+            // 2. Set end
+            case ']':
+                FinishSet();
+                return;
+            // 3. Range
+            case var rangeStart when PeekChar() == '-':
+            {
+                // Consume the range start character.
+                _charPos++;
 
-            _setTokens.Add(new GlobTokenRange(ch, rangeEnd));
-            return;
+                // Consume the range end character.
+                (char rangeEnd, bool rangeEndEscaped) = GetRangeEndChar();
+
+                // If the range end character is a non-escaped set closure, we can assume
+                // the set is ending there, and the range character is not a real range token.
+                // The rangeStart character and range '-' character then become literals, and the set is finished.
+                if (rangeEnd == ']' && !rangeEndEscaped)
+                {
+                    _setTokens.Add(new GlobTokenLiteral(rangeStart));
+                    _setTokens.Add(new GlobTokenLiteral('-'));
+                    FinishSet();
+                    return;
+                }
+
+                _setTokens.Add(new GlobTokenRange(rangeStart, rangeEnd));
+                return;
+            }
+            // 4. Literal
+            case var literal:
+            {
+                _setTokens.Add(new GlobTokenLiteral(literal));
+                return;
+            }
         }
-
-        _setTokens.Add(new GlobTokenLiteral(ch));
     }
 
     /// <summary>
-    ///     Gets the last character in a range token, and a bool representing whether the character was escaped or not.
+    ///     Gets the next char in <see cref="_patternString" /> if its available.
     /// </summary>
-    /// <param name="patternString">The full string being parsed.</param>
-    /// <param name="charPos">Current character being parsed, assumed to be the range character '-'.</param>
-    /// <returns>
-    ///     A tuple containing the last character in the range, and a bool
-    ///     set to true if the last character was escaped by a backslash.
-    /// </returns>
-    /// <exception cref="Exception">A parsing error occured.</exception>
-    private static (char, bool) NextRangeChar(string patternString, ref int charPos)
+    private char? PeekChar()
     {
-        charPos += 1;
-        if (charPos >= patternString.Length) throw new Exception("Range char is not followed by a character");
-        char ch = patternString[charPos];
+        if (_charPos + 1 < _patternString.Length) return _patternString[_charPos + 1];
+        return null;
+    }
 
+    /// <summary>
+    ///     Gets the range end character in a <see cref="GlobTokenRange" />, and a bool
+    ///     representing whether that character was escaped or not.
+    /// </summary>
+    /// <returns>
+    ///     A tuple containing the range end character for the range, and a bool
+    ///     set to true if the range end character was escaped by a backslash.
+    /// </returns>
+    /// <exception cref="DanglingRangeException">The range character has no following character.</exception>
+    /// <exception cref="DanglingEscapeException">The range end character is a dangling escape character.</exception>
+    private (char, bool) GetRangeEndChar()
+    {
+        _charPos++;
+        if (_charPos >= _patternString.Length) throw new DanglingRangeException();
+
+        // The character after the range '-' character
+        char ch = _patternString[_charPos];
+
+        // Check for an escaped character
         if (ch == '\\')
         {
-            charPos += 1;
-            if (charPos >= patternString.Length) throw new Exception("Escape character is not followed by a character");
-            char next = patternString[charPos];
+            _charPos++;
+            if (_charPos >= _patternString.Length) throw new DanglingEscapeException();
+            char next = _patternString[_charPos];
+
+            // The range end character is an escaped character
             return (next, true);
         }
 
+        // The range end character is a normal character
         return (ch, false);
     }
 
     /// <summary>
     ///     Wraps up the parsing of a character set token.
     /// </summary>
-    /// <exception cref="Exception">The set is empty.</exception>
+    /// <exception cref="EmptyCharacterSetException">The set is empty.</exception>
     private void FinishSet()
     {
-        if (_setTokens.Count == 0) throw new Exception("Set cannot be empty");
+        if (_setTokens.Count == 0) throw new EmptyCharacterSetException();
 
         _state = GlobParserState.Root;
         _tokens.Add(new GlobTokenCharacterSet(_setNegated, _setTokens));
+    }
+
+    /// <summary>
+    ///     Returns <see langword="true" /> if all characters in <see cref="_patternString" /> have been exhausted.
+    /// </summary>
+    /// <returns>
+    ///     <see langword="true" /> if <see cref="_charPos" /> is out of the range
+    ///     of <see cref="_patternString" />, or <see langword="false" /> otherwise.
+    /// </returns>
+    private bool PatternStringExhausted()
+    {
+        return _charPos >= _patternString.Length;
     }
 }
 

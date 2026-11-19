@@ -6,9 +6,8 @@ namespace GlobDemo;
 public readonly union GlobPatternToken(GlobTokenLiteral, GlobTokenAnyChar, GlobTokenAnySequence, GlobTokenCharacterSet);
 
 /// <summary>
-///     Glob pattern token that matches an exact character once.
+///     Matches an exact character once.
 /// </summary>
-/// <param name="character">The character this token matches.</param>
 public class GlobTokenLiteral(char character)
 {
     /// <summary>
@@ -18,22 +17,19 @@ public class GlobTokenLiteral(char character)
 }
 
 /// <summary>
-///     Glob pattern token that matches any character once.
+///     Matches any character once.
 /// </summary>
 public class GlobTokenAnyChar;
 
 /// <summary>
-///     Glob pattern token that matches a sequence of zero or more characters.
+///     Matches a sequence of zero or more characters.
 /// </summary>
 public class GlobTokenAnySequence;
 
 /// <summary>
-///     Glob pattern token that matches a set of characters, or against a set of characters if negated.
-///     <para></para>
-///     The set is a tokenized list of <see cref="GlobCharacterSetToken" />s.
+///     Matches one character if it matches any token in this set. When negated,
+///     matches one character if it matches none of the tokens in this set.
 /// </summary>
-/// <param name="negated">Negate the result of matching this character set.</param>
-/// <param name="tokens">Flat list containing this set's tokens in order.</param>
 public class GlobTokenCharacterSet(bool negated, List<GlobCharacterSetToken> tokens)
 {
     /// <summary>
@@ -54,19 +50,17 @@ public readonly union GlobCharacterSetToken(GlobTokenLiteral, GlobTokenRange);
 
 /// <summary>
 ///     Glob pattern token that matches if the input character is
-///     included in a range between <paramref name="from" /> and <paramref name="to" />.
+///     included in a range between <paramref name="rangeStart" /> and <paramref name="rangeEnd" />.
 /// </summary>
-/// <param name="from">Inclusive character range start.</param>
-/// <param name="to">Inclusive character range end.</param>
-public class GlobTokenRange(char from, char to)
+public class GlobTokenRange(char rangeStart, char rangeEnd)
 {
     /// <summary>
     ///     Inclusive character range start.
     /// </summary>
-    public char From = from;
+    public char RangeStart = rangeStart;
 
     /// <summary>
     ///     Inclusive character range end.
     /// </summary>
-    public char To = to;
+    public char RangeEnd = rangeEnd;
 }
