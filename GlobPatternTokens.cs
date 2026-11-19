@@ -13,7 +13,7 @@ public class GlobTokenLiteral(char character)
     /// <summary>
     ///     The character this token matches.
     /// </summary>
-    public char Character = character;
+    public readonly char Character = character;
 }
 
 /// <summary>
@@ -35,12 +35,12 @@ public class GlobTokenCharacterSet(bool negated, List<CharacterSetToken> tokens)
     /// <summary>
     ///     Negate the result of matching this character set.
     /// </summary>
-    public bool Negated = negated;
+    public readonly bool Negated = negated;
 
     /// <summary>
-    ///     Flat list containing this set's tokens in order.
+    ///     Flat immutable list containing this set's tokens in order.
     /// </summary>
-    public List<CharacterSetToken> Tokens = tokens;
+    public readonly IReadOnlyList<CharacterSetToken> Tokens = new List<CharacterSetToken>(tokens).AsReadOnly();
 }
 
 /// <summary>
@@ -57,10 +57,10 @@ public class CharacterSetTokenRange(char rangeStart, char rangeEnd)
     /// <summary>
     ///     Inclusive character range start.
     /// </summary>
-    public char RangeStart = rangeStart;
+    public readonly char RangeStart = rangeStart;
 
     /// <summary>
     ///     Inclusive character range end.
     /// </summary>
-    public char RangeEnd = rangeEnd;
+    public readonly char RangeEnd = rangeEnd;
 }

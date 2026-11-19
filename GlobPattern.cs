@@ -6,7 +6,7 @@ namespace GlobDemo;
 public class GlobPattern(List<GlobPatternToken> tokens)
 {
     /// <summary>
-    ///     Flat list containing this pattern's tokens in order.
+    ///     Flat immutable list containing this pattern's tokens in order.
     /// </summary>
-    public List<GlobPatternToken> Tokens = tokens;
+    public readonly IReadOnlyList<GlobPatternToken> Tokens = new List<GlobPatternToken>(tokens).AsReadOnly();
 }
