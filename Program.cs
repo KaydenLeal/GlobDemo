@@ -37,6 +37,10 @@ internal static class Program
             {
                 Console.Error.WriteLine($"FALSE (ERROR: {e.Message})");
             }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine($"FALSE (UNKNOWN ERROR: {e.Message})");
+            }
         });
 
         // Parse the command line arguments.
