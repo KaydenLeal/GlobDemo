@@ -71,48 +71,49 @@ public class GlobParser(string patternString)
     /// <exception cref="Exception">A parsing error occurred.</exception>
     private void ParseOneRoot()
     {
-        char ch = _patternString[_charPos];
-
-        if (ch == '\\')
+        switch (CurrentChar())
         {
-            _charPos++;
-            if (_charPos >= _patternString.Length)
-                throw new Exception("Escape character is not followed by a character");
-            char next = _patternString[_charPos];
-
-            _tokens.Add(new GlobTokenLiteral(next));
-            return;
-        }
-
-        if (ch == '?')
-        {
-            _tokens.Add(new GlobTokenAnyChar());
-            return;
-        }
-
-        if (ch == '*')
-        {
-            _tokens.Add(new GlobTokenAnySequence());
-            return;
-        }
-
-        if (ch == '[')
-        {
-            _state = GlobParserState.Set;
-            _setTokens = [];
-            _setNegated = false;
-
-            // Peek at the next char to see if it negates this set
-            if (PeekChar() == '!')
+            case '\\':
             {
-                _setNegated = true;
                 _charPos++;
+                if (_charPos >= _patternString.Length)
+                    throw new Exception("Escape character is not followed by a character");
+                char next = CurrentChar();
+
+                _tokens.Add(new GlobTokenLiteral(next));
+                return;
             }
+            case '?':
+            {
+                _tokens.Add(new GlobTokenAnyChar());
+                return;
+            }
+            case '*':
+            {
+                _tokens.Add(new GlobTokenAnySequence());
+                return;
+            }
+            case '[':
+            {
+                _state = GlobParserState.Set;
+                _setTokens = [];
+                _setNegated = false;
 
-            return;
+                // Peek at the next char to see if it negates this set
+                if (PeekChar() == '!')
+                {
+                    _setNegated = true;
+                    _charPos++;
+                }
+
+                return;
+            }
+            case var literal:
+            {
+                _tokens.Add(new GlobTokenLiteral(literal));
+                return;
+            }
         }
-
-        _tokens.Add(new GlobTokenLiteral(ch));
     }
 
     /// <summary>
@@ -123,14 +124,14 @@ public class GlobParser(string patternString)
     /// <exception cref="Exception">A parsing error occurred.</exception>
     private void ParseOneSet()
     {
-        switch (_patternString[_charPos])
+        switch (CurrentChar())
         {
             // 1. Escaped literal
             case '\\':
             {
                 _charPos++;
                 if (_charPos >= _patternString.Length) throw new DanglingEscapeException();
-                char next = _patternString[_charPos];
+                char next = CurrentChar();
 
                 _tokens.Add(new GlobTokenLiteral(next));
                 return;
@@ -172,15 +173,6 @@ public class GlobParser(string patternString)
     }
 
     /// <summary>
-    ///     Gets the next char in <see cref="_patternString" /> if its available.
-    /// </summary>
-    private char? PeekChar()
-    {
-        if (_charPos + 1 < _patternString.Length) return _patternString[_charPos + 1];
-        return null;
-    }
-
-    /// <summary>
     ///     Gets the range end character in a <see cref="GlobTokenRange" />, and a bool
     ///     representing whether that character was escaped or not.
     /// </summary>
@@ -196,14 +188,14 @@ public class GlobParser(string patternString)
         if (_charPos >= _patternString.Length) throw new DanglingRangeException();
 
         // The character after the range '-' character
-        char ch = _patternString[_charPos];
+        char ch = CurrentChar();
 
         // Check for an escaped character
         if (ch == '\\')
         {
             _charPos++;
             if (_charPos >= _patternString.Length) throw new DanglingEscapeException();
-            char next = _patternString[_charPos];
+            char next = CurrentChar();
 
             // The range end character is an escaped character
             return (next, true);
@@ -223,6 +215,27 @@ public class GlobParser(string patternString)
 
         _state = GlobParserState.Root;
         _tokens.Add(new GlobTokenCharacterSet(_setNegated, _setTokens));
+    }
+
+    /// <summary>
+    ///     Returns the current character in <see cref="_patternString" />.
+    /// </summary>
+    /// <returns>The character in <see cref="_patternString" /> at index <see cref="_charPos" />.</returns>
+    /// <exception cref="EndOfInputException">
+    ///     <see cref="_charPos" /> is out of <see cref="_patternString" />'s bounds.
+    /// </exception>
+    private char CurrentChar()
+    {
+        return !PatternStringExhausted() ? _patternString[_charPos] : throw new EndOfInputException();
+    }
+
+    /// <summary>
+    ///     Gets the next char in <see cref="_patternString" /> if its available.
+    /// </summary>
+    private char? PeekChar()
+    {
+        if (_charPos + 1 < _patternString.Length) return _patternString[_charPos + 1];
+        return null;
     }
 
     /// <summary>

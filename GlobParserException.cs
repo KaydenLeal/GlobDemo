@@ -7,6 +7,9 @@ public class GlobParserException(Exception innerException)
 }
 
 [Serializable]
+public class EndOfInputException() : Exception("Attempted to read a character past the pattern string's end");
+
+[Serializable]
 public class DanglingEscapeException() : Exception("Escape character has no following character to escape");
 
 [Serializable]
