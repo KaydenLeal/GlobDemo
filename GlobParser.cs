@@ -1,6 +1,22 @@
 namespace GlobDemo;
 
 /// <summary>
+///     A state the <see cref="GlobParser" /> can be in.
+/// </summary>
+internal enum GlobParserState
+{
+    /// <summary>
+    ///     We are currently parsing a single root token.
+    /// </summary>
+    Root,
+
+    /// <summary>
+    ///     We are currently parsing a token in a character set root token.
+    /// </summary>
+    Set
+}
+
+/// <summary>
 ///     Parses strings into valid <see cref="GlobPattern" />s.
 /// </summary>
 public class GlobParser(string patternString)
@@ -23,7 +39,7 @@ public class GlobParser(string patternString)
     /// <summary>
     ///     Parsed token accumulator for <see cref="GlobParserState.Set" />.
     /// </summary>
-    private List<GlobCharacterSetToken> _setTokens = [];
+    private List<CharacterSetToken> _setTokens = [];
 
     /// <summary>
     ///     Current negated value for <see cref="GlobParserState.Set" />.
@@ -55,12 +71,15 @@ public class GlobParser(string patternString)
                         break;
                 }
             }
+
+            if (parser._state == GlobParserState.Set) throw new CharacterSetNotClosedException();
         }
         catch (Exception e) when (
             e is EndOfInputException
                 or DanglingEscapeException
                 or DanglingRangeException
                 or EmptyCharacterSetException
+                or CharacterSetNotClosedException
         )
         {
             throw new GlobParserException(e);
@@ -79,22 +98,26 @@ public class GlobParser(string patternString)
     {
         switch (_patternString.Current)
         {
+            // 1. Escaped literal
             case '\\':
             {
                 char escaped = _patternString.ConsumeNext() ?? throw new DanglingEscapeException();
                 _tokens.Add(new GlobTokenLiteral(escaped));
                 return;
             }
+            // 2. Any char
             case '?':
             {
                 _tokens.Add(new GlobTokenAnyChar());
                 return;
             }
+            // 3. Any sequence
             case '*':
             {
                 _tokens.Add(new GlobTokenAnySequence());
                 return;
             }
+            // 4. Start a new set
             case '[':
             {
                 _state = GlobParserState.Set;
@@ -110,6 +133,7 @@ public class GlobParser(string patternString)
 
                 return;
             }
+            // 5. Literal
             case var literal:
             {
                 if (literal is null) throw new EndOfInputException();
@@ -133,7 +157,7 @@ public class GlobParser(string patternString)
             case '\\':
             {
                 char next = _patternString.ConsumeNext() ?? throw new DanglingEscapeException();
-                _tokens.Add(new GlobTokenLiteral(next));
+                _setTokens.Add(new GlobTokenLiteral(next));
                 return;
             }
             // 2. Set end
@@ -162,7 +186,7 @@ public class GlobParser(string patternString)
                     return;
                 }
 
-                _setTokens.Add(new GlobTokenRange(rangeStart.Value, rangeEnd));
+                _setTokens.Add(new CharacterSetTokenRange(rangeStart.Value, rangeEnd));
                 return;
             }
             // 4. Literal
@@ -177,7 +201,7 @@ public class GlobParser(string patternString)
     }
 
     /// <summary>
-    ///     Gets the range end character in a <see cref="GlobTokenRange" />, and a bool
+    ///     Gets the range end character in a <see cref="CharacterSetTokenRange" />, and a bool
     ///     representing whether that character was escaped or not.
     /// </summary>
     /// <returns>
@@ -214,20 +238,4 @@ public class GlobParser(string patternString)
         _state = GlobParserState.Root;
         _tokens.Add(new GlobTokenCharacterSet(_setNegated, _setTokens));
     }
-}
-
-/// <summary>
-///     A state the <see cref="GlobParser" /> can be in.
-/// </summary>
-internal enum GlobParserState
-{
-    /// <summary>
-    ///     We are currently parsing a single root token.
-    /// </summary>
-    Root,
-
-    /// <summary>
-    ///     We are currently parsing a token in a character set root token.
-    /// </summary>
-    Set
 }

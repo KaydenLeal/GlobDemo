@@ -30,7 +30,7 @@ public class GlobTokenAnySequence;
 ///     Matches one character if it matches any token in this set. When negated,
 ///     matches one character if it matches none of the tokens in this set.
 /// </summary>
-public class GlobTokenCharacterSet(bool negated, List<GlobCharacterSetToken> tokens)
+public class GlobTokenCharacterSet(bool negated, List<CharacterSetToken> tokens)
 {
     /// <summary>
     ///     Negate the result of matching this character set.
@@ -40,19 +40,19 @@ public class GlobTokenCharacterSet(bool negated, List<GlobCharacterSetToken> tok
     /// <summary>
     ///     Flat list containing this set's tokens in order.
     /// </summary>
-    public List<GlobCharacterSetToken> Tokens = tokens;
+    public List<CharacterSetToken> Tokens = tokens;
 }
 
 /// <summary>
 ///     A single token in a <see cref="GlobTokenCharacterSet" />.
 /// </summary>
-public readonly union GlobCharacterSetToken(GlobTokenLiteral, GlobTokenRange);
+public readonly union CharacterSetToken(GlobTokenLiteral, CharacterSetTokenRange);
 
 /// <summary>
 ///     Glob pattern token that matches if the input character is
 ///     included in a range between <paramref name="rangeStart" /> and <paramref name="rangeEnd" />.
 /// </summary>
-public class GlobTokenRange(char rangeStart, char rangeEnd)
+public class CharacterSetTokenRange(char rangeStart, char rangeEnd)
 {
     /// <summary>
     ///     Inclusive character range start.
