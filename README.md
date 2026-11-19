@@ -1,6 +1,6 @@
 # GlobDemo
 
-A small .NET command-line application that checks weather a string matches a glob pattern.
+A small .NET command-line application that checks whether a string matches a glob pattern.
 
 ## Requirements
 
@@ -16,7 +16,7 @@ dotnet run -- "<pattern>" "<value>"
 
 Examples: 
 
-``` sh
+```sh
 dotnet run -- "*.cs" "Program.cs" # Successful match
 # TRUE
 
@@ -52,7 +52,7 @@ dotnet run -- "*.md" "notes.txt"
 # FALSE
 ```
 
-Matching is case-sensitive ad applies to the entire input string. \
+Matching is case-sensitive and applies to the entire input string. \
 This application matches raw strings, not filesystem paths: \
 No files are inspected, path separators have no special meaning.
 
