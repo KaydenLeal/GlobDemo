@@ -7,7 +7,9 @@ internal static class Program
     private static void Main(string[] args)
     {
         // Setup command line arguments
-        RootCommand rootCommand = new("Match a string with a glob pattern");
+        RootCommand rootCommand = new("Match a string with a glob pattern.\n" +
+                                      "Writes \"TRUE\" to stdout when the string matches successfully, " +
+                                      "writes \"FALSE\" otherwise");
 
         Argument<string> patternArgument = new("pattern")
         {
@@ -24,10 +26,17 @@ internal static class Program
         // Define main program functionality to execute on argument parsing success.
         rootCommand.SetAction(parseResult =>
         {
-            GlobPattern pattern = GlobParser.ParsePattern(parseResult.GetRequiredValue(patternArgument));
-            string value = parseResult.GetRequiredValue(valueArgument);
+            try
+            {
+                GlobPattern pattern = GlobParser.ParsePattern(parseResult.GetRequiredValue(patternArgument));
+                string value = parseResult.GetRequiredValue(valueArgument);
 
-            Console.WriteLine(GlobMatcher.GlobMatchString(pattern, value));
+                Console.WriteLine(GlobMatcher.GlobMatchString(pattern, value) ? "TRUE" : "FALSE");
+            }
+            catch (GlobParserException e)
+            {
+                Console.Error.WriteLine($"FALSE (ERROR: {e.Message})");
+            }
         });
 
         // Parse the command line arguments.
